@@ -84,19 +84,19 @@ mod driver {
 
     impl Driver {
         pub fn init(config: DriverConfig) -> Result<Self> {
-            println!("init");
+            tracing::info!("init");
             Ok(Self)
         }
         pub fn set_moving(&mut self, moving: i8) -> Result<()> {
-            println!("moving: {moving}");
+            tracing::info!("moving: {moving}");
             Ok(())
         }
         pub fn turn(&mut self, turn: i8) -> Result<()> {
-            println!("turn: {turn}");
+            tracing::info!("turn: {turn}");
             Ok(())
         }
         pub fn stop(&mut self) -> Result<()> {
-            println!("stop");
+            tracing::info!("stop");
             Ok(())
         }
     }
