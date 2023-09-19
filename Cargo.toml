@@ -3,11 +3,15 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+rpi = ["dep:rppal"]
+
+
 [dependencies]
 actix-web = "4"
 dotenv = "0.15.0"
 futures = "0.3"
-rppal = { version = "0.14.1", features = ["hal"] }
+rppal = { version = "0.14.1", features = ["hal"], optional = true }
 ctor = "0.2.4"
 once_cell = "1.18.0"
 
