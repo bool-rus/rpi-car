@@ -23,4 +23,5 @@ headers = "0.3"
 timer = "0.2.0"
 chrono = "0.4.31"
 thiserror = "1.0.48"
+clap = { version = "4.4.4", features = ["derive"] }
 

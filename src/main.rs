@@ -1,3 +1,4 @@
+use clap::Parser;
 use peripheral::DriverMessage;
 use tokio::sync::mpsc::UnboundedSender;
 use tower_http::trace::{TraceLayer, DefaultMakeSpan};
@@ -8,9 +9,12 @@ use axum::{
     routing::get,
     Router
 };
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration, str::FromStr};
+
+use crate::peripheral::DriverConfig;
 
 mod peripheral;
+
 
 async fn handle_connection (mut socket: WebSocket, sender: UnboundedSender<DriverMessage>) {
     while let Some(msg) = socket.recv().await {
@@ -49,7 +53,10 @@ async fn ws_handler (
   
 #[tokio::main]
 async fn main () {
-    let sender = peripheral::start().unwrap();
+    let Args { listen, servo_center, servo_left, servo_right } = Args::parse();
+    let addr = SocketAddr::from_str(&listen).unwrap();
+    let config = DriverConfig::new(Duration::from_micros(servo_left as u64), Duration::from_micros(servo_center as u64), Duration::from_micros(servo_right as u64));
+    let sender = peripheral::start(config).unwrap();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
@@ -63,10 +70,25 @@ async fn main () {
                 .make_span_with(DefaultMakeSpan::default().include_headers(true))
         ).with_state(sender);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+#[derive(Parser, Debug)]
+struct Args {
+    /// address to input connections
+    #[arg(long, short, default_value="127.0.0.1:5000")]
+    listen: String,
+    /// servo period to center
+    #[arg(long, default_value="1500")]
+    servo_center: u32,
+    /// servo period to max left
+    #[arg(long, default_value="1300")]
+    servo_left: u32,
+    /// servo period to max right
+    #[arg(long, default_value="1800")]
+    servo_right:  u32,
 }
