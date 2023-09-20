@@ -6,6 +6,8 @@ pub type Result<T> = std::result::Result<T, DriverError>;
 
 const TIMEOUT: Duration = Duration::from_millis(250);
 
+const MAX: f64 = 100.0;
+
 #[derive(Debug, Clone, Copy)]
 pub struct DriverMessage {
     pub moving: i8,
@@ -15,6 +17,17 @@ pub struct DriverMessage {
 impl DriverMessage {
     pub fn is_stopped(&self) -> bool {
         self.moving == 0 && self.turning == 0
+    }
+    pub fn calibrated(self) -> Self {
+        let Self {mut moving, mut turning} = self;
+        let max = MAX as i8;
+        if moving.abs() > max {
+            moving = moving.signum() * max;
+        }
+        if turning.abs() > max {
+            turning = turning.signum() * max;
+        }
+        Self {moving, turning}
     }
 }
 
@@ -31,8 +44,8 @@ impl DriverConfig {
         let left = left.as_secs_f64();
         let center = center.as_secs_f64();
         let right = right.as_secs_f64();
-        let left_factor = i8::MAX as f64 /  (center - left);
-        let right_factor = i8::MAX as f64 / (right - center);
+        let left_factor = MAX /  (center - left);
+        let right_factor = MAX / (right - center);
         Self {servo_center, left_factor, right_factor}
     }
 }
@@ -137,6 +150,7 @@ mod driver {
 
     use super::DriverConfig;
     use super::Result;
+    use super::MAX;
 
     const FORWARD_POLARITY: Polarity = Polarity::Normal;
     const BACKWARD_POLARITY: Polarity = Polarity::Inverse;
@@ -177,7 +191,7 @@ mod driver {
             Ok(Self {direction, mover, turner, config})
         }
         pub fn set_moving(&mut self, moving: i8) -> Result<()> {
-            let duty = (moving.abs() as f64)/(i8::MAX as f64);
+            let duty = (moving.abs() as f64)/ MAX;
             let duty = 0.5 + duty/2.0;
             self.mover.set_duty_cycle(duty)?;
             if moving > 0 {

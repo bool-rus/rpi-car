@@ -32,7 +32,7 @@ async fn handle_connection (mut socket: WebSocket, sender: UnboundedSender<Drive
                     let moving = i8::from_be_bytes([data[0]]);
                     let turning = i8::from_be_bytes([data[1]]);
                     let msg = DriverMessage {moving, turning};
-                    sender.send(msg).ok_or_log();
+                    sender.send(msg.calibrated()).ok_or_log();
                 },
                 Message::Ping(data) => {
                     socket.send(Message::Pong(data)).await.ok_or_log();
@@ -96,4 +96,9 @@ struct Args {
     /// servo period to max right
     #[arg(long, default_value="1800")]
     servo_right:  u32,
+}
+
+#[test]
+fn mytest() {
+    println!("max: {}, min: {}", i8::MAX, i8::MIN);
 }
