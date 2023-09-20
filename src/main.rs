@@ -11,12 +11,13 @@ use axum::{
 };
 use std::{net::SocketAddr, time::Duration, str::FromStr};
 
-use crate::peripheral::DriverConfig;
+use crate::peripheral::{DriverConfig, OkOrLog};
 
 mod peripheral;
 
 
 async fn handle_connection (mut socket: WebSocket, sender: UnboundedSender<DriverMessage>) {
+    tracing::info!("Websocket started!");
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
             match msg {
@@ -24,13 +25,17 @@ async fn handle_connection (mut socket: WebSocket, sender: UnboundedSender<Drive
                     tracing::error!("Unknown message: {text}");
                 },
                 Message::Binary(data) => {
+                    if data.len() != 2 {
+                        tracing::error!("wrong data len, data: {:?}", data);
+                        continue;
+                    }
                     let moving = i8::from_be_bytes([data[0]]);
                     let turning = i8::from_be_bytes([data[1]]);
                     let msg = DriverMessage {moving, turning};
-                    sender.send(msg).unwrap();
+                    sender.send(msg).ok_or_log();
                 },
                 Message::Ping(data) => {
-                    socket.send(Message::Pong(data)).await;
+                    socket.send(Message::Pong(data)).await.ok_or_log();
                 },
                 Message::Pong(_) => {},
                 Message::Close(_) => {
@@ -38,7 +43,7 @@ async fn handle_connection (mut socket: WebSocket, sender: UnboundedSender<Drive
                 },
             }
         } else {
-            tracing::info!("Client abruptly disconnected");
+            tracing::error!("Client abruptly disconnected");
             return;
         }
     }
@@ -61,7 +66,7 @@ async fn main () {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    tracing::info!("WebSocket started");
+    tracing::info!("WebServer started");
 
     let app = Router::new()
         .route("/websocket", get(ws_handler))

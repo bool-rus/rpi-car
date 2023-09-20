@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+        <script type="text/javascript" src="joy.js"></script>
+        <script type="text/javascript">
+const socketUrl = `ws://localhost:5000/websocket`
+const connect = function(socket) {
+    return new Promise((resolve, reject) => {
+        socket.onopen = (e) => {
+            socket.send(JSON.stringify({ "loaded" : true }));
+            resolve();
+        }
+
+        socket.onmessage = (data) => {
+            console.log("Received server data: " + JSON.stringify(data));
+        }
+
+        socket.onclose = (data) => {
+            console.log('Connection closed: ' + JSON.stringify(data))
+        }
+
+        socket.onerror = (e) => {
+            console.log("Error: " + e);
+
+            resolve();
+            connect(socket);
+        }
+    });
+}
+
+$(document).ready(function() {
+    let socket = new WebSocket(socketUrl);
+    let joy = new JoyStick('joyDiv');
+    connect(socket)
+
+    setInterval(function() {
+        let point = new Int8Array([joy.GetY(), joy.GetX()])
+        console.log(`point: ${point}`)
+        let array = new Uint8Array(point.buffer);
+        socket.send(array);
+    }, 200);
+})
+        </script>
+    </head>
+    <body>
+        <div id="joyDiv" style="width:200px;height:200px;margin-bottom:20px;"></div>
+    </body>
+</html>

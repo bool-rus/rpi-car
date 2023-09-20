@@ -4,12 +4,18 @@ use tokio::sync::mpsc::{UnboundedSender as Sender, unbounded_channel};
 use driver::*;
 pub type Result<T> = std::result::Result<T, DriverError>;
 
-const TIMEOUT: Duration = Duration::from_millis(100);
+const TIMEOUT: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, Copy)]
 pub struct DriverMessage {
     pub moving: i8,
     pub turning: i8,
+}
+
+impl DriverMessage {
+    pub fn is_stopped(&self) -> bool {
+        self.moving == 0 && self.turning == 0
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,15 +47,18 @@ pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
             let timeout = tokio::time::sleep(TIMEOUT);
             tokio::select! {
                 _ = timeout => {
-                    driver.stop();
+                    if !prev_state.is_stopped() {
+                        driver.stop().ok_or_log();
+                        prev_state = DriverMessage { moving: 0, turning: 0 };
+                    }
                 },
                 msg = receiver.recv() => {
                     if let Some(msg) = msg {
                         if msg.moving != prev_state.moving {
-                            driver.set_moving(msg.moving);
+                            driver.set_moving(msg.moving).ok_or_log();
                         }
                         if msg.turning != prev_state.turning {
-                            driver.turn(msg.turning);
+                            driver.turn(msg.turning).ok_or_log();
                         }
                         prev_state = msg;
                     } else {
@@ -58,15 +67,31 @@ pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
                 },
             }
         }
-        println!("driver stopped");//todo: здесь просится log::info!
+        tracing::info!("driver stopped");
     });
     Ok(sender)
 }
 
+
+pub trait OkOrLog<T> {
+    fn ok_or_log(self) -> Option<T>;
+}
+
+impl <T,E: std::error::Error> OkOrLog<T> for std::result::Result<T,E> {
+    fn ok_or_log(self) -> Option<T> {
+        match self {
+            Ok(t) => Some(t),
+            Err(e) => {
+                tracing::error!("{}", e);
+                None
+            },
+        }
+    }
+}
+
+
 #[cfg(not(feature="rpi"))]
 mod driver {
-
-    use std::time::Duration;
     use thiserror::Error;
 
 
@@ -83,7 +108,7 @@ mod driver {
 
 
     impl Driver {
-        pub fn init(config: DriverConfig) -> Result<Self> {
+        pub fn init(_config: DriverConfig) -> Result<Self> {
             tracing::info!("init");
             Ok(Self)
         }
