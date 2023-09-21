@@ -96,7 +96,7 @@ pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
 const FORWARD_POLARITY: Polarity = Polarity::Normal;
 const BACKWARD_POLARITY: Polarity = Polarity::Inverse;
 const SERVO_POLARITY: Polarity = Polarity::Normal;
-const MOTOR_FREQ: f64 = 1000.0;
+const MOTOR_FREQ: f64 = 100.0;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
 fn forward(pin: &mut OutputPin) {
     pin.set_low();
