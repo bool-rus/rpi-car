@@ -58,15 +58,14 @@ async fn ws_handler (
   
 #[tokio::main]
 async fn main () {
+    tracing_subscriber::fmt()
+    .with_max_level(tracing::Level::INFO)
+    .init();
+
     let Args { listen, servo_center, servo_left, servo_right } = Args::parse();
     let addr = SocketAddr::from_str(&listen).unwrap();
     let config = DriverConfig::new(Duration::from_micros(servo_left as u64), Duration::from_micros(servo_center as u64), Duration::from_micros(servo_right as u64));
     let sender = peripheral::start(config).unwrap();
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
-
-    tracing::info!("WebServer started");
 
     let app = Router::new()
         .route("/websocket", get(ws_handler))
