@@ -119,7 +119,7 @@ pub struct Driver {
 impl Driver {
     pub fn init(config: DriverConfig) -> Result<Self> {
         let mut gpio = Gpio::new()?;
-        let direction = gpio.get(config.motor_pin as u32)?.into_output();
+        let direction = gpio.get(config.motor_pin)?.into_output();
         let mover = Pwm::with_frequency(Channel::Pwm0, config.motor_freq, 0.0, FORWARD_POLARITY, true)?;
         let turner = Pwm::with_period(Channel::Pwm1, SERVO_PERIOD, config.servo_center, SERVO_POLARITY, true)?;
         Ok(Self {direction, mover, turner, config})
@@ -222,7 +222,7 @@ mod driver {
 
     impl Gpio {
         pub fn new() -> Result<Self, GpioError> {Ok(Self)}
-        pub fn get(&mut self, pin: u32) -> Result<OutputPin, GpioError> {Ok(OutputPin)}
+        pub fn get(&mut self, pin: u8) -> Result<OutputPin, GpioError> {Ok(OutputPin)}
     }
 
     pub struct Pwm (Channel);
