@@ -34,7 +34,8 @@ impl DriverMessage {
 
 #[derive(Debug, Clone, Copy)]
 pub struct DriverConfig {
-    motor_freq: f64,
+    pub motor_freq: f64,
+    pub motor_pin: u8,
     servo_center: Duration,
     left_factor: f64,
     right_factor: f64,
@@ -43,17 +44,14 @@ pub struct DriverConfig {
 impl DriverConfig {
     pub fn new(left: Duration, center: Duration, right: Duration) -> Self {
         let motor_freq = 1000.0;
+        let motor_pin = 22;
         let servo_center = center;
         let left = left.as_secs_f64();
         let center = center.as_secs_f64();
         let right = right.as_secs_f64();
         let left_factor = (center - left) / MAX;
         let right_factor = (right - center) / MAX;
-        Self {servo_center, left_factor, right_factor, motor_freq}
-    }
-    pub fn with_motor_freq(mut self, motor_freq: f64)-> Self {
-        self.motor_freq = motor_freq;
-        self
+        Self {servo_center, left_factor, right_factor, motor_freq, motor_pin}
     }
 }
 
@@ -102,7 +100,6 @@ pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
 const FORWARD_POLARITY: Polarity = Polarity::Normal;
 const BACKWARD_POLARITY: Polarity = Polarity::Inverse;
 const SERVO_POLARITY: Polarity = Polarity::Normal;
-const MOTOR_FREQ: f64 = 100.0;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
 fn forward(pin: &mut OutputPin) {
     pin.set_low();
@@ -122,7 +119,7 @@ pub struct Driver {
 impl Driver {
     pub fn init(config: DriverConfig) -> Result<Self> {
         let mut gpio = Gpio::new()?;
-        let direction = gpio.get(22)?.into_output();
+        let direction = gpio.get(config.motor_pin as u32)?.into_output();
         let mover = Pwm::with_frequency(Channel::Pwm0, config.motor_freq, 0.0, FORWARD_POLARITY, true)?;
         let turner = Pwm::with_period(Channel::Pwm1, SERVO_PERIOD, config.servo_center, SERVO_POLARITY, true)?;
         Ok(Self {direction, mover, turner, config})

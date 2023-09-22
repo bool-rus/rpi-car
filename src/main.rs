@@ -62,13 +62,15 @@ async fn main () {
     .with_max_level(tracing::Level::INFO)
     .init();
 
-    let Args { listen, servo_center, servo_left, servo_right, motor_frequency } = Args::parse();
+    let Args { listen, servo_center, servo_left, servo_right, motor_frequency, motor_pin } = Args::parse();
     let addr = SocketAddr::from_str(&listen).unwrap();
-    let config = DriverConfig::new(
+    let mut config = DriverConfig::new(
         Duration::from_micros(servo_left as u64), 
         Duration::from_micros(servo_center as u64), 
         Duration::from_micros(servo_right as u64)
-    ).with_motor_freq(motor_frequency as f64);
+    );
+    config.motor_freq = motor_frequency as f64;
+    config.motor_pin = motor_pin;
     let sender = peripheral::start(config).unwrap();
 
     let app = Router::new()
@@ -102,6 +104,9 @@ struct Args {
     /// motor frequency in Hz
     #[arg(long, default_value="1000")]
     motor_frequency: u32, 
+    /// motor pin
+    #[arg(long, default_value="22")]
+    motor_pin: u8,
 }
 
 #[test]
