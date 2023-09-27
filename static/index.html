@@ -4,7 +4,7 @@
         <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
         <script type="text/javascript" src="joy.js"></script>
         <script type="text/javascript">
-const socketUrl = `ws://localhost:5000/websocket`
+const socketUrl = 'ws://localhost:5000/websocket'
 const connect = function(socket) {
     return new Promise((resolve, reject) => {
         socket.onopen = (e) => {
@@ -28,22 +28,51 @@ const connect = function(socket) {
         }
     });
 }
-
+function resizeFrame() {
+    let width = window.innerWidth;   //('body').width();
+    let height = window.innerHeight; //('body').height();
+    let frame = $('iframe');
+    console.log("width: " + width + ", height: " + height);
+    frame.css('width', width);
+    frame.css('height', height);
+}
 $(document).ready(function() {
+    $(window).on('resize', resizeFrame);
+    resizeFrame();
     let socket = new WebSocket(socketUrl);
     let joy = new JoyStick('joyDiv');
     connect(socket)
 
     setInterval(function() {
-        let point = new Int8Array([joy.GetY(), joy.GetX()])
+        let point = new Int8Array([joy.GetY(), joy.GetX()]);
         console.log(`point: ${point}`)
         let array = new Uint8Array(point.buffer);
         socket.send(array);
     }, 200);
-})
+});
         </script>
+        <style>
+            body {
+                height: 100%;
+                margin: 0;
+            }
+            iframe {
+                border: none;
+                margin: 0;
+                padding: 0;
+            }
+            #joyDiv {
+                width: 200px;
+                height: 200px;
+                margin-bottom: 20px;
+                float: right;
+                position: relative;
+                top: -220px;
+            }
+        </style>
     </head>
     <body>
-        <div id="joyDiv" style="width:200px;height:200px;margin-bottom:20px;"></div>
+        <iframe src="https://снт-подмосковье.рф/cam/stream.html?src=pizero" class="camera-frame" alternate="pizero"></iframe>
+        <div id="joyDiv"></div>
     </body>
 </html>
