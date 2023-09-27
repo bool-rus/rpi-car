@@ -36,6 +36,7 @@ impl DriverMessage {
 pub struct DriverConfig {
     pub motor_freq: f64,
     pub motor_pin: u8,
+    pub min_duty: f64,
     servo_center: Duration,
     left_factor: f64,
     right_factor: f64,
@@ -44,6 +45,7 @@ pub struct DriverConfig {
 impl DriverConfig {
     pub fn new(left: Duration, center: Duration, right: Duration) -> Self {
         let motor_freq = 1000.0;
+        let min_duty = 0.5;
         let motor_pin = 22;
         let servo_center = center;
         let left = left.as_secs_f64();
@@ -51,7 +53,16 @@ impl DriverConfig {
         let right = right.as_secs_f64();
         let left_factor = (center - left) / MAX;
         let right_factor = (right - center) / MAX;
-        Self {servo_center, left_factor, right_factor, motor_freq, motor_pin}
+        Self {servo_center, left_factor, right_factor, motor_freq, motor_pin, min_duty}
+    }
+    fn calculate_duty(&self, moving: i8) -> f64 {
+        let moving = moving.abs() as f64 / MAX;
+        let duty = self.min_duty + (1.0 - self.min_duty) * moving;
+        if duty > 1.0 {
+            tracing::error!("duty more than full: {}", duty);
+            return 1.0;
+        }
+        return duty;
     }
 }
 
@@ -125,8 +136,7 @@ impl Driver {
         Ok(Self {direction, mover, turner, config})
     }
     pub fn set_moving(&mut self, moving: i8) -> Result<()> {
-        let duty = (moving.abs() as f64)/ MAX;
-        let duty = 0.5 + duty/2.0;
+        let duty = self.config.calculate_duty(moving);
         self.mover.set_duty_cycle(duty)?;
         if moving > 0 {
             forward(&mut self.direction);
