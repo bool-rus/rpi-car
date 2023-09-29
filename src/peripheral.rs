@@ -209,15 +209,33 @@ mod driver {
     pub use rppal::{pwm::{Pwm, Polarity, Channel}, gpio::{OutputPin, Gpio}};
     pub use rppal::pwm::Error as PwmError;
     pub use rppal::gpio::Error as GpioError;
+    pub use rppal::gpio::Level;
 }
 
 //mock driver
 #[cfg(not(feature="rpi"))]
 mod driver {
-    use std::time::Duration;
+    use std::{time::Duration, ops::Not};
 
     use thiserror::Error;
 
+    #[derive(Debug, Clone, Copy)]
+    pub enum Level {
+        Low,
+        High,
+    }
+
+    impl Not for Level {
+        type Output = Level;
+
+        fn not(self) -> Self::Output {
+            match self {
+                Level::Low => Level::High,
+                Level::High => Level::Low,
+            }
+        }
+    }
+    
     #[derive(Debug)]
     pub enum Channel {
         Pwm0,
@@ -237,6 +255,7 @@ mod driver {
         pub fn into_output(self) -> Self {self}
         pub fn set_low(&mut self) {println!("set low");}
         pub fn set_high(&mut self) {println!("set high");}
+        pub fn write(&mut self, level: Level) {println!("set {level:?}");}
     }
 
     impl Gpio {
@@ -270,8 +289,6 @@ mod driver {
             Ok(())
         }
     }
-
-    pub struct Driver;
 
     #[derive(Error, Debug)]
     #[error(transparent)]
