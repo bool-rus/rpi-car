@@ -128,12 +128,21 @@ pub struct Driver {
 }
 
 impl Driver {
+    //нужно заново переинициализировать все используемые пины
+    fn raise_up(&mut self) -> Result<()> {
+        self.set_moving(1)?;
+        self.set_moving(-1)?;
+        self.stop()?;
+        Ok(())
+    }
     pub fn init(config: DriverConfig) -> Result<Self> {
         let mut gpio = Gpio::new()?;
         let direction = gpio.get(config.motor_pin)?.into_output();
         let mover = Pwm::with_frequency(Channel::Pwm0, config.motor_freq, 0.0, FORWARD_POLARITY, true)?;
         let turner = Pwm::with_period(Channel::Pwm1, SERVO_PERIOD, config.servo_center, SERVO_POLARITY, true)?;
-        Ok(Self {direction, mover, turner, config})
+        let mut me = Self {direction, mover, turner, config};
+        me.raise_up()?;
+        Ok(me)
     }
     pub fn set_moving(&mut self, moving: i8) -> Result<()> {
         let duty = self.config.calculate_duty(moving);
