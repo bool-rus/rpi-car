@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+        <script type="text/javascript" src="joy.js"></script>
+        <script type="text/javascript">
+const socketUrl = 'ws://localhost:5000/websocket'
+const connect = function(socket) {
+    return new Promise((resolve, reject) => {
+        socket.onopen = (e) => {
+            socket.send(JSON.stringify({ "loaded" : true }));
+            resolve();
+        }
+
+        socket.onmessage = (data) => {
+            console.log("Received server data: " + JSON.stringify(data));
+        }
+
+        socket.onclose = (data) => {
+            console.log('Connection closed: ' + JSON.stringify(data))
+        }
+
+        socket.onerror = (e) => {
+            console.log("Error: " + e);
+
+            resolve();
+            connect(socket);
+        }
+    });
+}
+function resizeFrame() {
+    let width = window.innerWidth;   //('body').width();
+    let height = window.innerHeight; //('body').height();
+    let frame = $('iframe');
+    console.log("width: " + width + ", height: " + height);
+    frame.css('width', width);
+    frame.css('height', height);
+}
+$(document).ready(function() {
+    $(window).on('resize', resizeFrame);
+    resizeFrame();
+    let socket = new WebSocket(socketUrl);
+    let joyR = new JoyStick('joyDivR');
+    let joyL = new JoyStick('joyDivL');
+    connect(socket)
+
+    setInterval(function() {
+        let point = new Int8Array([joyL.GetY(), joyR.GetX()]);
+        console.log(`point: ${point}`)
+        let array = new Uint8Array(point.buffer);
+        socket.send(array);
+    }, 200);
+});
+        </script>
+        <style>
+            body {
+                height: 100%;
+                margin: 0;
+            }
+            iframe {
+                border: none;
+                margin: 0;
+                padding: 0;
+            }
+            .joystick {
+                width: 200px;
+                height: 200px;
+                margin-bottom: 20px;
+                position: relative;
+                top: -220px;
+            }
+            .right {
+                float: right;
+            }
+            .left {
+                float: left;
+            }
+        </style>
+    </head>
+    <body>
+        <iframe src="https://снт-подмосковье.рф/cam/stream.html?src=pizero" class="camera-frame" alternate="pizero"></iframe>
+        <div id="joyDivL" class="joystick left"></div>
+        <div id="joyDivR" class="joystick right"></div>
+    </body>
+</html>
