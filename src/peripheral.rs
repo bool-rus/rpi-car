@@ -40,6 +40,7 @@ pub struct DriverConfig {
     servo_center: Duration,
     left_factor: f64,
     right_factor: f64,
+    pin_forward_level: Level,
 }
 
 impl DriverConfig {
@@ -53,7 +54,8 @@ impl DriverConfig {
         let right = right.as_secs_f64();
         let left_factor = (center - left) / MAX;
         let right_factor = (right - center) / MAX;
-        Self {servo_center, left_factor, right_factor, motor_freq, motor_pin, min_duty}
+        let pin_forward_level = Level::Low;
+        Self {servo_center, left_factor, right_factor, motor_freq, motor_pin, min_duty, pin_forward_level}
     }
     fn calculate_duty(&self, moving: i8) -> f64 {
         let moving = moving.abs() as f64 / MAX;
@@ -64,12 +66,6 @@ impl DriverConfig {
         }
         return duty;
     }
-}
-
-#[test]
-fn test_config() {
-    let conf = DriverConfig::new(Duration::from_micros(1300), Duration::from_micros(1500), Duration::from_micros(1800));
-    dbg!(conf);
 }
 
 pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
@@ -109,16 +105,17 @@ pub fn start(config: DriverConfig) -> Result<Sender<DriverMessage>> {
 
 
 const FORWARD_POLARITY: Polarity = Polarity::Normal;
-const BACKWARD_POLARITY: Polarity = Polarity::Inverse;
 const SERVO_POLARITY: Polarity = Polarity::Normal;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
-fn forward(pin: &mut OutputPin) {
-    pin.set_low();
-} 
-fn backward(pin: &mut OutputPin) {
-    pin.set_high();
-}
 
+
+fn invert_polarity(pol: Polarity) -> Polarity {
+    use Polarity::*;
+    match pol {
+        Normal => Inverse,
+        Inverse => Normal,
+    }
+}
 
 pub struct Driver {
     config: DriverConfig,
@@ -148,14 +145,22 @@ impl Driver {
         let duty = self.config.calculate_duty(moving);
         self.mover.set_duty_cycle(duty)?;
         if moving > 0 {
-            forward(&mut self.direction);
-            self.mover.set_polarity(FORWARD_POLARITY)?;
+            self.move_forward()?;
         } else if moving < 0 {
-            backward(&mut self.direction);
-            self.mover.set_polarity(BACKWARD_POLARITY)?;
+            self.move_backward()?;
         } else {
             self.mover.set_duty_cycle(0.0)?;
         }
+        Ok(())
+    }
+    fn move_forward(&mut self) -> Result<()> {
+        self.direction.write(self.config.pin_forward_level);
+        self.mover.set_polarity(FORWARD_POLARITY)?;
+        Ok(())
+    }
+    fn move_backward(&mut self) -> Result<()> {
+        self.direction.write(!self.config.pin_forward_level);
+        self.mover.set_polarity(invert_polarity(FORWARD_POLARITY))?;
         Ok(())
     }
     pub fn turn(&mut self, turn: i8) -> Result<()> {
